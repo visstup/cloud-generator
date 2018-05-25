@@ -1,0 +1,141 @@
+/*********************************************************************
+----------------------------------------------------------------------
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as
+published by the Free Software Foundation.
+<https://www.gnu.org/licenses/lgpl-3.0.en.html>
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+**********************************************************************/
+
+
+// ************** CLOUD GENERATOR **************** //
+
+//parameters:
+//Spread, Chaos, ChaosBandWidth, OSCWaveform, ADSR[4], Cauer Filter Cutoff, Filter bypass, Thickness(distortion)
+
+declare name "Cloud Generator";
+declare version "0.0";
+
+import("stdfaust.lib");
+
+
+//option: pow(freq,mod), exact modulation (better than multiplication)
+
+//declaring 9 parallel sawtooth oscillators
+mySaw(freq,spreadamt,mychaosbw,chaos) = par(i,9,sawt(freq,i,mychaosbw,chaos)) :> _
+with{
+  //modulating the frequency of the oscillators
+  mychaosMul(mychaosbw,chaos) = (chaos * os.osc(mychaosbw)*0.01 + 1);
+  sawt(freq,i,mychaosbw,chaos) = os.sawtooth(
+    pow((freq * spread(i,spreadamt)),mychaosMul(mychaosbw,chaos))
+    );
+//detuning parameters for individual oscillators
+  spreadvox(0) = 1;
+  spreadvox(1) = 1.25;
+  spreadvox(2) = 0.8;
+  spreadvox(3) = 1.5;
+  spreadvox(4) = 0.66;
+  spreadvox(5) = 1.75;
+  spreadvox(6) = 0.57;
+  spreadvox(7) = 2;
+  spreadvox(8) = 0.5;
+  spread(i,spreadamt) = pow(spreadvox(i),spreadamt);
+};
+
+//same thing, but with sinusodial oscillators
+mySine(freq,spreadamt,mychaosbw,chaos) = par(i,9,sine(freq,i,mychaosbw,chaos)) :> _
+with{
+  mychaosMul(mychaosbw,chaos) = (chaos * os.osc(mychaosbw)*0.01 + 1);
+  sine(freq,i,mychaosbw,chaos) = os.osc(
+    pow((freq * spread(i,spreadamt)),mychaosMul(mychaosbw,chaos))
+    );
+  spreadvox(0) = 1;
+  spreadvox(1) = 1.25;
+  spreadvox(2) = 0.8;
+  spreadvox(3) = 1.5;
+  spreadvox(4) = 0.66;
+  spreadvox(5) = 1.75;
+  spreadvox(6) = 0.57;
+  spreadvox(7) = 2;
+  spreadvox(8) = 0.5;
+  spread(i,spreadamt) = pow(spreadvox(i),spreadamt);
+};
+
+//declaring signal path
+/*   path: oscillators, distortion, filter
+*/
+    cloudgen(freq,spreadAmt,mychaosbw,chaos,synthselect,richness,filtertog,lowp)
+          = mySaw(freq,spreadAmt,mychaosbw,chaos) * (synthselect == 0),
+          mySine(freq,spreadAmt,mychaosbw,chaos) * (synthselect == 1) :> _*(0.2)
+          : *(richness) : clip(-1,1)
+                        with{
+                          clip(lo,hi) = min(hi) : max(lo);
+                          }
+                        : cubic
+                        with {
+                          cubic(x) = x - x*x*x/3;
+            }
+             <: _*(filtertog == 0),fi.lowpass3e(lowp)*(filtertog == 1) :> _;
+//pregain = pow(10,richness*2);
+
+//declaring the envelope of the gate
+    envlop(att,dec,sus,rel,gate,gain) = en.adsr(att,dec,sus,rel,gate) * gain;
+
+//declaring UI parameters
+mySynthDemo = mainGroup(cloudgen
+  (midifreq,spreadAmt,mychaosbw,chaos,synthselect,richness,filtertog,lowp) *
+  envlop(att,dec,sus,rel,midigate,midigain) * volume
+  )
+with{
+//declaring groups
+  mainGroup(x) = hgroup("Cloud Generator",x);
+  modGroup(x) = vgroup("Modulation",x);
+  stdGroup(x) = vgroup("Standard",x);
+  envGroup(x) = vgroup("Envelope",x);
+  midiGroup(x) = vgroup("MIDI",x);
+
+//envelope group
+  att = envGroup(hslider("[1]Attack [style:knob][unit:ms]",10,0.1,3000,0.1)/1000);
+  dec = envGroup(hslider("[2]Decay [style:knob][unit:ms]",100,1,3000,0.1)/1000);
+  /*if building the synth from source, reminder: Faust 2.5.11 and higher uses amplitude measurement s [0≤s≤1]
+  for sustain units and not percentage values, as seen in the line of code below
+  the synth was compiled with 2.5.10, hence the multiplication by 100*/
+  sus = envGroup(hslider("[3]Sustain [style:knob]",0.7,0,1,0.01)*100);
+  rel = envGroup(hslider("[4]Release [style:knob][unit:ms]",500,0.1,5000,0.1)/1000);
+
+  midigate = midiGroup(button("gate"));
+  midigain = midiGroup(hslider("gain", 0.5, 0, 10, 0.01));
+  midifreq = midiGroup(hslider("freq[unit:Hz]",220,20,20000,0.1));
+
+  spreadAmt = modGroup(hslider("[1]Spread
+    [tooltip:Modulates the individual detuning of the 9 parallel oscillators]
+  [style:knob]",0.01,0,1,0.01) : ba.lin2LogGain);
+
+  chaos = modGroup(hslider("[2]Leslie Amount
+    [tooltip:The amount of the sinusoidal LFO modulating the pitch of the oscillators]
+  [style:knob]",0,0,1,0.01) : si.smoo);
+
+  mychaosbw = modGroup(hslider("[3]Leslie Bandwidth
+    [tooltip:The frequency of the sinusodial LFO modulating the pitch of the oscillators]
+  [unit:Hz][style:knob]",1,0.01,20,0.01));
+
+  richness = modGroup(hslider("[4]Richness
+    [tooltip:A simple cubic distortion unit]
+   [style:knob]",1,1,10,0.01) : si.smoo);
+
+
+  synthselect = stdGroup(hslider("[1]Oscillator Type
+      [style:radio{'Saw':0; 'Sine':1}]",0,0,1,1));
+  filtertog = stdGroup(checkbox("[2]Lowpass Filter
+    [tooltip:A third-order elliptic (Cauer) lowpass filter]"));
+  lowp = stdGroup(hslider("[3]Cutoff [unit:Hz]",10000,20,20000,1)/20000
+   : ba.lin2LogGain : _*(20000) : si.smoo);
+  volume = stdGroup(hslider("[4]Volume [unit:dB]",0,-128,6,0.01) : si.smooth(0.999) : ba.db2linear);
+};
+
+
+process = mySynthDemo <: _,_;
