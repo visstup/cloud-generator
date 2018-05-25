@@ -60,8 +60,8 @@ The distortion (thickness) is NOT alias-free, this will be fixed in the future a
 Do not rename [cloudgenerator.vst] or [cloudgenerator.dll], if you do so, your DAW will not find it and you will not be able to use it.
 
 The package contains two audio demos of the synthesiser:
-CloudGenerator_inAction.wav - a raw unedited demo of the synthesiser
-Fraction.wav - a track I created, using only the Cloud Generator as a pitched synthesis source (see the documentation for more details).
+CloudGenerator_inAction.mp3 - a raw unedited demo of the synthesiser
+Fraction_Premaster.mp3 - a track I created, using only the Cloud Generator as a pitched synthesis source (see the documentation for more details).
 
 I also have a clip on YouTube demonstrating the synthesiser.
 https://youtu.be/3uzxZlojxuI
