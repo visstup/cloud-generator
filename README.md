@@ -64,7 +64,7 @@ CloudGenerator_inAction.wav - a raw unedited demo of the synthesiser
 Fraction.wav - a track I created, using only the Cloud Generator as a pitched synthesis source (see the documentation for more details).
 
 I also have a clip on YouTube demonstrating the synthesiser.
-<link>
+https://youtu.be/3uzxZlojxuI
 
 
 If you find any further problems or have any questions please let me know.
