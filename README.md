@@ -13,6 +13,8 @@ developed by Visstup (Rittik Wystup)
 Compiled by Faust
 <http://faust.grame.fr>
 
+This project won the Faust Student Award 2018. Many thanks to the jury for deciding on this project! :)
+
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as
 published by the Free Software Foundation.
